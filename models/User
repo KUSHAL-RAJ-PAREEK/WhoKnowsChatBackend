@@ -1,0 +1,20 @@
+const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true },
+    pNumber: { type: String, required: true },
+    gender: { type: String, required: true },
+    dob: { type: String, required: true },
+    latitude: { type: String, required: true },
+    longitude: { type: String, required: true },
+    bio: { type: String, required: true },
+    interests: [{ type: String }],
+    posts: [{ type: String }],
+    imgUrl: { type: String },
+    ageRange: { type: String },
+    geoRadiusRange: { type: Number },
+    preferredGender: { type: String }
+});
+
+const User = mongoose.model('User', userSchema, 'user')
+module.exports = User;

@@ -1,0 +1,114 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const socketIo = require('socket.io');
+const http = require('http');
+const cors = require('cors');
+const User = require('./models/User');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+
+app.use(cors());
+app.use(express.json());
+
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const port = process.env.PORT || 3000;
+
+io.on('connection', (socket) => {
+    console.log('User connected');
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+    .then(() => console.log("Connected to MongoDB successfully"))
+    .catch((err) => console.error("Error connecting to MongoDB: ", err));
+
+const messageSchema = new mongoose.Schema({
+    senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+    receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+    message: { type: String, required: true },
+    timeStamp: { type: Date, default: Date.now }
+});
+const Message = mongoose.model('Message', messageSchema);
+
+const chatRoomSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    messages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }]
+});
+const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
+
+const createChatRoomId = (id1, id2) => {
+    return [id1, id2].sort().join('_');
+};
+
+app.post('/send-message', async (req, res) => {
+    const { senderId, receiverId, message } = req.body;
+    console.log(senderId, receiverId, message);
+
+    if (!senderId || !receiverId || !message) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    try {
+        const sender = await User.findById(senderId);
+        const receiver = await User.findById(receiverId);
+        if (!sender || !receiver) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const chatRoomId = createChatRoomId(senderId, receiverId);
+        
+        let chatRoom = await ChatRoom.findById(chatRoomId);
+        if (!chatRoom) {
+            chatRoom = new ChatRoom({
+                _id: chatRoomId,
+                users: [senderId, receiverId],
+                messages: []
+            });
+            await chatRoom.save();
+        }
+
+        const newMessage = new Message({ senderId, receiverId, message });
+        const savedMessage = await newMessage.save();
+
+        chatRoom.messages.push(savedMessage._id);
+        await chatRoom.save();
+
+        io.emit('newMessage', savedMessage);
+        res.status(201).json(savedMessage);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error sending message' });
+    }
+});
+
+app.get('/message/:chatRoomId', async (req, res) => {
+    const chatRoomId = req.params.chatRoomId;
+    try {
+        const chatRoom = await ChatRoom.findById(chatRoomId).populate('messages');
+        if (!chatRoom) {
+            return res.status(404).json({ error: 'Chat room not found' });
+        }
+        res.status(200).json(chatRoom.messages);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error getting messages' });
+    }
+});
+
+server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
