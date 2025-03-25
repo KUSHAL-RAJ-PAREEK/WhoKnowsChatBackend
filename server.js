@@ -36,16 +36,17 @@ mongoose.connect(process.env.MONGODB_URI, {
     .then(() => console.log("Connected to MongoDB successfully"))
     .catch((err) => console.error("Error connecting to MongoDB: ", err));
 
-const messageSchema = new mongoose.Schema({
-    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
-    senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    message: { type: String },
-    imgUrl: { type: String, default: null },
-    timeStamp: { type: Date, default: Date.now }
-});
-const Message = mongoose.model('Message', messageSchema);
-
+    const messageSchema = new mongoose.Schema({
+        _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+        senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+        receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+        message: { type: String },
+        imgUrl: { type: String, default: null },
+        imgStr: { type: String, default: null },  
+        timeStamp: { type: Date, default: Date.now }
+    });
+    const Message = mongoose.model('Message', messageSchema);
+    
 const chatRoomSchema = new mongoose.Schema({
     _id: { type: String, required: true },
     users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -58,11 +59,11 @@ const createChatRoomId = (id1, id2) => {
 };
 
 app.post('/send-message', async (req, res) => {
-    const { senderId, receiverId, message, imgUrl } = req.body;
-    console.log(senderId, receiverId, message, imgUrl);
+    const { senderId, receiverId, message, imgUrl, imgStr } = req.body;  
+    console.log(senderId, receiverId, message, imgUrl, imgStr);
 
-    if (!senderId || !receiverId || (!message && !imgUrl)) {
-        return res.status(400).json({ error: 'Message or image URL is required' });
+    if (!senderId || !receiverId || (!message && !imgUrl && !imgStr)) {
+        return res.status(400).json({ error: 'Message, image URL, or Base64 string is required' });
     }
 
     try {
@@ -84,13 +85,11 @@ app.post('/send-message', async (req, res) => {
             await chatRoom.save();
         }
 
-        const newMessage = new Message({ senderId, receiverId, message, imgUrl });
+        const newMessage = new Message({ senderId, receiverId, message, imgUrl, imgStr }); 
         const savedMessage = await newMessage.save();
 
         chatRoom.messages.push(savedMessage._id);
         await chatRoom.save();
-        
-        console.log("Saved message:", savedMessage); 
 
         io.emit('newMessage', savedMessage);
         res.status(201).json(savedMessage);
@@ -99,6 +98,7 @@ app.post('/send-message', async (req, res) => {
         res.status(500).json({ error: 'Error sending message' });
     }
 });
+
 
 app.get('/message/:chatRoomId', async (req, res) => {
     const chatRoomId = req.params.chatRoomId;
