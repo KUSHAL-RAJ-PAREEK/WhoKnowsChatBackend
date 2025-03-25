@@ -42,6 +42,7 @@ mongoose.connect(process.env.MONGODB_URI, {
         senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         message: { type: String },
+        imgUrl: { type: String, default: null },
         imgStr1: { type: String, default: null },  
         imgStr2: { type: String, default: null }, 
         timeStamp: { type: Date, default: Date.now }
