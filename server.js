@@ -36,15 +36,19 @@ mongoose.connect(process.env.MONGODB_URI, {
     .then(() => console.log("Connected to MongoDB successfully"))
     .catch((err) => console.error("Error connecting to MongoDB: ", err));
 
+    const mongoose = require('mongoose');
+
     const messageSchema = new mongoose.Schema({
         _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
         senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         message: { type: String },
-        imgUrl: { type: String, default: null },
-        imgStr: { type: String, default: null },  
+        imgStr1: { type: String, default: null },  
+        imgStr2: { type: String, default: null }, 
         timeStamp: { type: Date, default: Date.now }
     });
+    
+    
     const Message = mongoose.model('Message', messageSchema);
     
 const chatRoomSchema = new mongoose.Schema({
@@ -59,10 +63,10 @@ const createChatRoomId = (id1, id2) => {
 };
 
 app.post('/send-message', async (req, res) => {
-    const { senderId, receiverId, message, imgUrl, imgStr } = req.body;  
-    console.log(senderId, receiverId, message, imgUrl, imgStr);
+    const { senderId, receiverId, message, imgUrl, imgStr1,imgStr2 } = req.body;  
+    console.log(senderId, receiverId, message, imgUrl, imgStr1,imgStr2);
 
-    if (!senderId || !receiverId || (!message && !imgUrl && !imgStr)) {
+    if (!senderId || !receiverId || (!message && !imgUrl && !imgStr1 && !imgStr2)) {
         return res.status(400).json({ error: 'Message, image URL, or Base64 string is required' });
     }
 
@@ -85,7 +89,7 @@ app.post('/send-message', async (req, res) => {
             await chatRoom.save();
         }
 
-        const newMessage = new Message({ senderId, receiverId, message, imgUrl, imgStr }); 
+        const newMessage = new Message({ senderId, receiverId, message, imgUrl, imgStr1, imgStr2 }); 
         const savedMessage = await newMessage.save();
 
         chatRoom.messages.push(savedMessage._id);
