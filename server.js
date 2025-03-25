@@ -89,6 +89,8 @@ app.post('/send-message', async (req, res) => {
 
         chatRoom.messages.push(savedMessage._id);
         await chatRoom.save();
+        
+        console.log("Saved message:", savedMessage); 
 
         io.emit('newMessage', savedMessage);
         res.status(201).json(savedMessage);
