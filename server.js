@@ -1,6 +1,5 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { MongoClient, GridFSBucket } = require('mongodb');
 const socketIo = require('socket.io');
 const http = require('http');
 const cors = require('cors');
@@ -22,7 +21,14 @@ const io = socketIo(server, {
 
 const port = process.env.PORT || 3000;
 
-// MongoDB connection
+io.on('connection', (socket) => {
+    console.log('User connected');
+    
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
 mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -30,29 +36,34 @@ mongoose.connect(process.env.MONGODB_URI, {
     .then(() => console.log("Connected to MongoDB successfully"))
     .catch((err) => console.error("Error connecting to MongoDB: ", err));
 
-// Schema for Message
-const messageSchema = new mongoose.Schema({
-    senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    message: { type: String },
-    imgUrl: { type: String, default: null },
-    imgstr: { type: String, default: null },  // Store Base64 image string
-    timeStamp: { type: Date, default: Date.now }
+    const messageSchema = new mongoose.Schema({
+        _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+        senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+        receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+        message: { type: String },
+        imgUrl: { type: String, default: null },
+        imgStr: { type: String, default: null },  
+        timeStamp: { type: Date, default: Date.now }
+    });
+    const Message = mongoose.model('Message', messageSchema);
+    
+const chatRoomSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    messages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }]
 });
+const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
 
-const Message = mongoose.model('Message', messageSchema);
-
-// Helper function to create chat room ID
 const createChatRoomId = (id1, id2) => {
     return [id1, id2].sort().join('_');
 };
 
-// Send message endpoint
 app.post('/send-message', async (req, res) => {
-    const { senderId, receiverId, message, imgstr } = req.body;
+    const { senderId, receiverId, message, imgUrl, imgStr } = req.body;  
+    console.log(senderId, receiverId, message, imgUrl, imgStr);
 
-    if (!senderId || !receiverId || (!message && !imgstr)) {
-        return res.status(400).json({ error: 'Message or Base64 image string is required' });
+    if (!senderId || !receiverId || (!message && !imgUrl && !imgStr)) {
+        return res.status(400).json({ error: 'Message, image URL, or Base64 string is required' });
     }
 
     try {
@@ -74,32 +85,7 @@ app.post('/send-message', async (req, res) => {
             await chatRoom.save();
         }
 
-        // If there's an image in the message, convert it to buffer and store in GridFS
-        let imgFileId = null;
-        if (imgstr) {
-            const buffer = Buffer.from(imgstr, 'base64');
-
-            const client = await MongoClient.connect(process.env.MONGODB_URI, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true
-            });
-
-            const db = client.db();
-            const bucket = new GridFSBucket(db, { bucketName: 'images' });
-
-            const uploadStream = bucket.openUploadStream('image.jpg');  // You can set a dynamic name
-            uploadStream.end(buffer, () => {
-                imgFileId = uploadStream.id;  // Save the GridFS file ID
-            });
-        }
-
-        const newMessage = new Message({
-            senderId,
-            receiverId,
-            message,
-            imgstr: imgFileId ? imgFileId.toString() : null,  // Store the GridFS file ID
-        });
-
+        const newMessage = new Message({ senderId, receiverId, message, imgUrl, imgStr }); 
         const savedMessage = await newMessage.save();
 
         chatRoom.messages.push(savedMessage._id);
@@ -113,41 +99,38 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-// Retrieve image from GridFS as Base64 string
-app.get('/get-image/:fileId', async (req, res) => {
-    const { fileId } = req.params;
 
+app.get('/message/:chatRoomId', async (req, res) => {
+    const chatRoomId = req.params.chatRoomId;
     try {
-        const client = await MongoClient.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
-
-        const db = client.db();
-        const bucket = new GridFSBucket(db, { bucketName: 'images' });
-
-        // Open a read stream from GridFS
-        const downloadStream = bucket.openDownloadStream(mongoose.Types.ObjectId(fileId));
-
-        let data = [];
-        downloadStream.on('data', chunk => {
-            data.push(chunk);
-        });
-
-        downloadStream.on('end', () => {
-            // Convert the chunks into a Base64 string
-            const imgBuffer = Buffer.concat(data);
-            const base64String = imgBuffer.toString('base64');
-            res.status(200).json({ base64String });  // Return the image as Base64
-        });
-
-        downloadStream.on('error', (err) => {
-            console.error(err);
-            res.status(500).json({ error: 'Error retrieving image' });
-        });
+        const chatRoom = await ChatRoom.findById(chatRoomId).populate('messages');
+        if (!chatRoom) {
+            return res.status(404).json({ error: 'Chat room not found' });
+        }
+        res.status(200).json(chatRoom.messages);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Error connecting to MongoDB' });
+        res.status(500).json({ error: 'Error getting messages' });
+    }
+});
+
+
+app.delete('/delete-message/:messageId', async (req, res) => {
+    const { messageId } = req.params;
+
+    try {
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        await Message.findByIdAndDelete(messageId);
+        io.emit('messageDeleted', messageId);
+
+        res.status(200).json({ message: 'Message deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error deleting message' });
     }
 });
 
