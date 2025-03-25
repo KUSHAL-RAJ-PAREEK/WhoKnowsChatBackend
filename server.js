@@ -62,6 +62,7 @@ const createChatRoomId = (id1, id2) => {
     return [id1, id2].sort().join('_');
 };
 
+
 app.post('/send-message', async (req, res) => {
     const { senderId, receiverId, message, imgUrl, imgStr1,imgStr2 } = req.body;  
     console.log(senderId, receiverId, message, imgUrl, imgStr1,imgStr2);
