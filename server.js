@@ -15,7 +15,7 @@ app.use(express.json());
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
+        methods: ["GET", "POST", "DELETE"]
     }
 });
 
@@ -23,6 +23,7 @@ const port = process.env.PORT || 3000;
 
 io.on('connection', (socket) => {
     console.log('User connected');
+    
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
@@ -36,9 +37,11 @@ mongoose.connect(process.env.MONGODB_URI, {
     .catch((err) => console.error("Error connecting to MongoDB: ", err));
 
 const messageSchema = new mongoose.Schema({
+    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
     senderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    message: { type: String, required: true },
+    message: { type: String },
+    imgUrl: { type: String, default: null },
     timeStamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', messageSchema);
@@ -55,11 +58,11 @@ const createChatRoomId = (id1, id2) => {
 };
 
 app.post('/send-message', async (req, res) => {
-    const { senderId, receiverId, message } = req.body;
-    console.log(senderId, receiverId, message);
+    const { senderId, receiverId, message, imgUrl } = req.body;
+    console.log(senderId, receiverId, message, imgUrl);
 
-    if (!senderId || !receiverId || !message) {
-        return res.status(400).json({ error: 'All fields are required' });
+    if (!senderId || !receiverId || (!message && !imgUrl)) {
+        return res.status(400).json({ error: 'Message or image URL is required' });
     }
 
     try {
@@ -81,7 +84,7 @@ app.post('/send-message', async (req, res) => {
             await chatRoom.save();
         }
 
-        const newMessage = new Message({ senderId, receiverId, message });
+        const newMessage = new Message({ senderId, receiverId, message, imgUrl });
         const savedMessage = await newMessage.save();
 
         chatRoom.messages.push(savedMessage._id);
@@ -106,6 +109,26 @@ app.get('/message/:chatRoomId', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Error getting messages' });
+    }
+});
+
+
+app.delete('/delete-message/:messageId', async (req, res) => {
+    const { messageId } = req.params;
+
+    try {
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        await Message.findByIdAndDelete(messageId);
+        io.emit('messageDeleted', messageId);
+
+        res.status(200).json({ message: 'Message deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error deleting message' });
     }
 });
 
