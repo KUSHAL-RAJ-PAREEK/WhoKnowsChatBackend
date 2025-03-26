@@ -135,6 +135,34 @@ app.delete('/delete-message/:messageId', async (req, res) => {
     }
 });
 
+
+app.put('/edit-message/:messageId', async (req, res) => {
+    const { messageId } = req.params;
+    const { newMessage } = req.body;  
+
+    if (!newMessage) {
+        return res.status(400).json({ error: 'New message text is required' });
+    }
+
+    try {
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        message.message = newMessage; 
+        await message.save();
+
+        io.emit('messageUpdated', { messageId, newMessage });
+
+        res.status(200).json({ message: 'Message updated successfully', updatedMessage: message });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error updating message' });
+    }
+});
+
+
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
