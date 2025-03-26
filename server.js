@@ -155,7 +155,7 @@ app.put('/edit-message/:messageId', async (req, res) => {
         
         await message.save();
 
-        io.emit('messageUpdated', { messageId, newMessage });
+        io.emit('messageUpdated', [ messageId, newMessage ]);
 
         res.status(200).json({ message: 'Message updated successfully', updatedMessage: message });
     } catch (err) {
