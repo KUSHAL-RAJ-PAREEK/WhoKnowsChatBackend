@@ -42,7 +42,7 @@ mongoose.connect(process.env.MONGODB_URI, {
         receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         message: { type: String },
         imgUrl: { type: String, default: null },
-        imgStr: { type: String, default: null },  
+        imgStr: [{ type: String }],  
         timeStamp: { type: Date, default: Date.now }
     });
     const Message = mongoose.model('Message', messageSchema);
