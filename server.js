@@ -138,10 +138,9 @@ app.delete('/delete-message/:messageId', async (req, res) => {
 
 app.put('/edit-message/:messageId', async (req, res) => {
     const { messageId } = req.params;
-    const { newMessage } = req.body;  
 
-    if (!newMessage) {
-        return res.status(400).json({ error: 'New message text is required' });
+    if (!messageId) {
+        return res.status(400).json({ error: 'New message id is required' });
     }
 
     try {
@@ -149,7 +148,7 @@ app.put('/edit-message/:messageId', async (req, res) => {
         if (!message) {
             return res.status(404).json({ error: 'Message not found' });
         }
-
+        const newMessage = "deleted";
         message.message = newMessage; 
         message.imgUrl = null;
         message.imgStr = null;
