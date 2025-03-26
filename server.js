@@ -151,6 +151,9 @@ app.put('/edit-message/:messageId', async (req, res) => {
         }
 
         message.message = newMessage; 
+        message.imgUrl = null;
+        message.imgStr = null;
+        
         await message.save();
 
         io.emit('messageUpdated', { messageId, newMessage });
