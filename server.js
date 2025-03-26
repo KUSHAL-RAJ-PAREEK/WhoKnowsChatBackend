@@ -9,6 +9,7 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 app.use(express.json({ limit: '50mb' }))
+
 app.use(cors());
 app.use(express.json());
 
@@ -42,7 +43,7 @@ mongoose.connect(process.env.MONGODB_URI, {
         receiverId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
         message: { type: String },
         imgUrl: { type: String, default: null },
-        imgStr: [{ type: String }],  
+        imgStr: { type: String, default: null },  
         timeStamp: { type: Date, default: Date.now }
     });
     const Message = mongoose.model('Message', messageSchema);
