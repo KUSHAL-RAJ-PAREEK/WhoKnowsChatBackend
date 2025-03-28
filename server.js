@@ -172,17 +172,17 @@ app.put('/edit-message/:messageId', async (req, res) => {
 });
 
 
+app.put('/accept/:id', async (req, res) => {
+    const { id } = req.params;
+    const { count } = req.body;
 
-app.post('/accept', async (req, res) => {
-    const { _id, count } = req.body;
-
-    if (!_id || typeof count !== 'number') {
-        return res.status(400).json({ error: 'Invalid _id or count value' });
+    if (typeof count !== 'number') {
+        return res.status(400).json({ error: 'Invalid count value' });
     }
 
     try {
         const updatedAccept = await Acceptation.findByIdAndUpdate(
-            _id,
+            id,
             { count },
             { new: true, upsert: true } 
         );
@@ -190,7 +190,7 @@ app.post('/accept', async (req, res) => {
         res.status(200).json(updatedAccept);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Error processing acceptation' });
+        res.status(500).json({ error: 'Error updating acceptation' });
     }
 });
 
