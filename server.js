@@ -26,10 +26,13 @@ io.on('connection', (socket) => {
     console.log('User connected');
 
     socket.on('typing', ({ chatRoomId, userId }) => {
+        console.log(`User ${userId} is typing in chat room ${chatRoomId}`);
         socket.to(chatRoomId).emit('userTyping', { userId, isTyping: true });
     });
 
     socket.on('stopTyping', ({ chatRoomId, userId }) => {
+        console.log(`Users ${userId} is typing in chat room ${chatRoomId}`);
+
         socket.to(chatRoomId).emit('userTyping', { userId, isTyping: false });
     });
     
