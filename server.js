@@ -20,20 +20,36 @@ const io = socketIo(server, {
     }
 });
 
+const chatRoomTypingMap = new Map(); 
+
 const port = process.env.PORT || 3000;
 
 io.on('connection', (socket) => {
     console.log('User connected');
-
+ 
+   
     socket.on('typing', ({ chatRoomId, userId }) => {
-        console.log(`User ${userId} is typing in chat room ${chatRoomId}`);
-        socket.to(chatRoomId).emit('userTyping', { userId, isTyping: true });
+        if (!chatRoomTypingMap.has(chatRoomId)) {
+            chatRoomTypingMap.set(chatRoomId, new Set());
+        }
+
+        let typingUsers = chatRoomTypingMap.get(chatRoomId);
+        typingUsers.add(userId); 
+
+        io.to(chatRoomId).emit('userTyping', Array.from(typingUsers));
     });
 
     socket.on('stopTyping', ({ chatRoomId, userId }) => {
-        console.log(`Users ${userId} is typing in chat room ${chatRoomId}`);
+        if (chatRoomTypingMap.has(chatRoomId)) {
+            let typingUsers = chatRoomTypingMap.get(chatRoomId);
+            typingUsers.delete(userId); 
 
-        socket.to(chatRoomId).emit('userTyping', { userId, isTyping: false });
+            if (typingUsers.size === 0) {
+                chatRoomTypingMap.delete(chatRoomId);
+            } else {
+                io.to(chatRoomId).emit('userTyping', Array.from(typingUsers));
+            }
+        }
     });
     
     socket.on('disconnect', () => {
