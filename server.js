@@ -24,6 +24,14 @@ const port = process.env.PORT || 3000;
 
 io.on('connection', (socket) => {
     console.log('User connected');
+
+    socket.on('typing', ({ chatRoomId, userId }) => {
+        socket.to(chatRoomId).emit('userTyping', { userId, isTyping: true });
+    });
+
+    socket.on('stopTyping', ({ chatRoomId, userId }) => {
+        socket.to(chatRoomId).emit('userTyping', { userId, isTyping: false });
+    });
     
     socket.on('disconnect', () => {
         console.log('User disconnected');
