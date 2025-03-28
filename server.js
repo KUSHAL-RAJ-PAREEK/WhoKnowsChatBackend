@@ -59,6 +59,13 @@ const createChatRoomId = (id1, id2) => {
     return [id1, id2].sort().join('_');
 };
 
+const acceptationSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    count: { type: Number, required: true }
+});
+
+const Acceptation = mongoose.model('Acceptation', acceptationSchema);
+
 app.post('/send-message', async (req, res) => {
     const { senderId, receiverId, message, imgUrl, imgStr } = req.body;  
     console.log(senderId, receiverId, message, imgUrl, imgStr);
@@ -161,6 +168,42 @@ app.put('/edit-message/:messageId', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Error updating message' });
+    }
+});
+
+
+
+app.post('/accept', async (req, res) => {
+    const { _id, count } = req.body;
+
+    if (!_id || typeof count !== 'number') {
+        return res.status(400).json({ error: 'Invalid _id or count value' });
+    }
+
+    try {
+        const updatedAccept = await Acceptation.findByIdAndUpdate(
+            _id,
+            { count },
+            { new: true, upsert: true } 
+        );
+
+        res.status(200).json(updatedAccept);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error processing acceptation' });
+    }
+});
+
+app.get('/accept/:id', async (req, res) => {
+    try {
+        const acceptation = await Acceptation.findById(req.params.id);
+        if (!acceptation) {
+            return res.status(404).json({ error: 'Acceptation not found' });
+        }
+        res.status(200).json(acceptation);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error retrieving acceptation' });
     }
 });
 
