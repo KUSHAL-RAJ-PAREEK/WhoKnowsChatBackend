@@ -186,7 +186,7 @@ app.put('/accept/:id', async (req, res) => {
             id,
             { 
                 count,
-                $addToSet: { acceptedUsers: userId } 
+                $set: { [`acceptedUsers.${userId}`]: true } 
             },
             { new: true, upsert: true } 
         );
