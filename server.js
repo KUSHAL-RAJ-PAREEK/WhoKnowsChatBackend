@@ -61,7 +61,8 @@ const createChatRoomId = (id1, id2) => {
 
 const acceptationSchema = new mongoose.Schema({
     _id: { type: String, required: true },
-    count: { type: Number, required: true }
+    count: { type: Number, required: true },
+    acceptedUsers: { type: Map, of: Boolean } 
 });
 
 const Acceptation = mongoose.model('Acceptation', acceptationSchema);
@@ -174,25 +175,29 @@ app.put('/edit-message/:messageId', async (req, res) => {
 
 app.put('/accept/:id', async (req, res) => {
     const { id } = req.params;
-    const { count } = req.body;
+    const { count, userId } = req.body;  
 
-    if (typeof count !== 'number') {
-        return res.status(400).json({ error: 'Invalid count value' });
+    if (!userId || typeof count !== 'number') {
+        return res.status(400).json({ error: 'Invalid count value or missing userId' });
     }
 
     try {
         const updatedAccept = await Acceptation.findByIdAndUpdate(
             id,
-            { count },
-            { new: true, upsert: true } 
+            { 
+                $set: { [`acceptedUsers.${userId}`]: true },  
+                count
+            },
+            { new: true, upsert: true }
         );
 
-        res.status(200).json(updatedAccept);
+        res.status(200).json({ message: 'Acceptation updated', count: updatedAccept.count });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Error updating acceptation' });
     }
 });
+
 
 app.get('/accept/:id', async (req, res) => {
     try {
@@ -206,6 +211,24 @@ app.get('/accept/:id', async (req, res) => {
         res.status(500).json({ error: 'Error retrieving acceptation' });
     }
 });
+
+app.get('/accept/:id/user/:userId', async (req, res) => {
+    const { id, userId } = req.params;
+
+    try {
+        const acceptation = await Acceptation.findById(id);
+
+        if (!acceptation || !acceptation.acceptedUsers.get(userId)) {
+            return res.status(404).json({ error: 'User not found in acceptation' });
+        }
+
+        res.status(200).json({ message: 'User has accepted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error checking acceptation' });
+    }
+});
+
 
 
 server.listen(port, () => {
