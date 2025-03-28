@@ -200,7 +200,7 @@ app.get('/accept/:id', async (req, res) => {
         if (!acceptation) {
             return res.status(404).json({ error: 'Acceptation not found' });
         }
-        res.status(200).json(acceptation.count);
+        res.status(200).json({ count: acceptation.count });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Error retrieving acceptation' });
