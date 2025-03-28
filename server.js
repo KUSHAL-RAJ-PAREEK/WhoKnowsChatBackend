@@ -29,6 +29,7 @@ io.on('connection', (socket) => {
  
    
     socket.on('typing', ({ chatRoomId, userId }) => {
+        console.log('User typing:', chatRoomId, userId);
         if (!chatRoomTypingMap.has(chatRoomId)) {
             chatRoomTypingMap.set(chatRoomId, new Set());
         }
