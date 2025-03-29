@@ -49,9 +49,10 @@ io.on('connection', (socket) => {
 
             if (typingUsers.size === 0) {
                 chatRoomTypingMap.delete(chatRoomId);
-            } else {
-                io.emit('userTyping', Array.from(typingUsers));
             }
+            
+            io.emit('userTyping', { chatRoomId, typingUsers: Array.from(typingUsers) });
+            
         }
     });
     
