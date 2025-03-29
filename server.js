@@ -50,7 +50,7 @@ io.on('connection', (socket) => {
             if (typingUsers.size === 0) {
                 chatRoomTypingMap.delete(chatRoomId);
             } else {
-                io.to(chatRoomId).emit('userTyping', Array.from(typingUsers));
+                io.emit('userTyping', Array.from(typingUsers));
             }
         }
     });
