@@ -55,6 +55,13 @@ io.on('connection', (socket) => {
             
         }
     });
+
+    socket.on('status', ({ userId, count }) => {
+        console.log(`Received status update - ChatRoomId: ${userId}, Count: ${count}`);
+    
+        io.emit('countUpdate', { chatRoomId: userId, count: count });
+    });
+    
     
     socket.on('disconnect', () => {
         console.log('User disconnected');
