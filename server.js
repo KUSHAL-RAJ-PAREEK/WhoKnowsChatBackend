@@ -287,11 +287,10 @@ app.delete('/chatroom/:chatRoomId', async (req, res) => {
     try {
         const chatRoom = await ChatRoom.findById(chatRoomId);
         if (!chatRoom) {
-            return res.status(404).json({ error: 'Chat room not found' });
+            return res.status(200).json({ message: 'Chat room not found, but operation successful' });
         }
 
         await Message.deleteMany({ _id: { $in: chatRoom.messages } });
-
         await ChatRoom.findByIdAndDelete(chatRoomId);
 
         io.emit('chatRoomDeleted', { chatRoomId });
@@ -302,7 +301,6 @@ app.delete('/chatroom/:chatRoomId', async (req, res) => {
         res.status(500).json({ error: 'Error deleting chat room' });
     }
 });
-
 
 
 server.listen(port, () => {
