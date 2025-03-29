@@ -63,6 +63,17 @@ io.on('connection', (socket) => {
     });
     
     
+    socket.on('matchStatus', (data) => {
+        console.log(`Received matchStatus:`, data);
+    
+        if (data.chatId) {
+            socket.emit('matchStatusResponse', { chatId: data.chatId });
+        } else {
+            console.error('Invalid matchStatus data:', data);
+        }
+    });
+
+    
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
