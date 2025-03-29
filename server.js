@@ -33,11 +33,13 @@ io.on('connection', (socket) => {
         if (!chatRoomTypingMap.has(chatRoomId)) {
             chatRoomTypingMap.set(chatRoomId, new Set());
         }
-
+        console.log(chatRoomTypingMap)
         let typingUsers = chatRoomTypingMap.get(chatRoomId);
         typingUsers.add(userId); 
 
-        io.to(chatRoomId).emit('userTyping', Array.from(typingUsers));
+        io.emit('userTyping', {chatRoomId,typingUsers: Array.from(typingUsers)});
+        console.log('Typing users:', typingUsers);
+
     });
 
     socket.on('stopTyping', ({ chatRoomId, userId }) => {
